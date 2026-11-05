@@ -23,19 +23,19 @@ The application runs entirely offline without third-party API dependencies, leve
 - Automatic model pulling on startup
 - No external dependencies
 
-### 🔄 **Dynamic Model Discovery**
+###  **Dynamic Model Discovery**
 
 - Automatically detects all available Ollama models
 - No hardcoded model configurations
 - Real-time model list updates
 
-### 🧠 **Intelligent Context Handling**
+###  **Intelligent Context Handling**
 
 - Programmatically detects document availability
 - Uses different prompts based on context presence
 - Helpful guidance when no documents are found
 
-### 🎯 **Enhanced Provider Selection**
+###  **Enhanced Provider Selection**
 
 - Choose between Ollama and Groq providers
 - Model-specific selection within each provider
@@ -79,7 +79,7 @@ This will automatically:
 
 ### 1. **System Health Check**
 
-- Use the "🔍 Health Check" button in the sidebar
+- Use the " Health Check" button in the sidebar
 - Verifies connectivity to Ollama and Qdrant
 - Shows system status and available models
 
@@ -99,13 +99,13 @@ This will automatically:
 
 **Manual Document Upload:**
 
-- Use the "✏️ Add Text Document" section
+- Use the " Add Text Document" section
 - Enter document text and optional metadata
 - JSON format metadata support
 
 **Document Clearing:**
 
-- "🗑️ Clear All Documents" button
+- " Clear All Documents" button
 - Removes all indexed documents
 - Confirmation dialog for safety
 
@@ -221,13 +221,13 @@ services:
 
 ## Benefits
 
-### **🔒 Privacy & Security**
+### ** Privacy & Security**
 
 - **Local Processing**: Documents never leave your infrastructure
 - **No API Keys**: Core functionality works without external services
 - **Data Control**: Complete control over your data
 
-### **💰 Cost Effective**
+### ** Cost Effective**
 
 - **No Per-Token Charges**: Local inference is free
 - **Scalable**: Add more models without additional costs
