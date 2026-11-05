@@ -17,7 +17,7 @@ The application runs entirely offline without third-party API dependencies, leve
 
 
 
-### 🤖 **Local Ollama Deployment**
+###  **Local Ollama Deployment**
 
 - Fully containerized Ollama service
 - Automatic model pulling on startup
