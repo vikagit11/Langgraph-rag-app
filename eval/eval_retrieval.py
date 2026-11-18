@@ -122,15 +122,16 @@ def search_dense(client, dense_model, query: str, k: int) -> list[str]:
     return [p.payload["doc_id"] for p in res.points]
 
 
-def search_hybrid_rrf(client, dense_model, sparse_model, query: str, k: int) -> list[str]:
+def search_hybrid_rrf(client, dense_model, sparse_model, query: str, k: int,
+                      prefetch_limit: int = 20) -> list[str]:
     dense_vec = next(dense_model.query_embed(query))
     sparse_vec = next(sparse_model.query_embed(query))
     res = client.query_points(
         collection_name=COLLECTION,
         prefetch=[
-            models.Prefetch(query=dense_vec, using=DENSE_VECTOR, limit=max(k, 20)),
+            models.Prefetch(query=dense_vec, using=DENSE_VECTOR, limit=max(k, prefetch_limit)),
             models.Prefetch(query=models.SparseVector(**sparse_vec.as_object()),
-                            using=SPARSE_VECTOR, limit=max(k, 20)),
+                            using=SPARSE_VECTOR, limit=max(k, prefetch_limit)),
         ],
         query=models.FusionQuery(fusion=models.Fusion.RRF),
         limit=k,
@@ -214,6 +215,8 @@ def main() -> int:
     ap.add_argument("--overlap", type=int, default=0, help="перекрытие чанков в символах")
     ap.add_argument("--dense-model", default=DENSE_MODEL)
     ap.add_argument("--sparse-model", default=SPARSE_MODEL)
+    ap.add_argument("--prefetch-limit", type=int, default=20,
+                    help="глубина prefetch для гибридной конфигурации")
     args = ap.parse_args()
 
     corpus_path = Path(args.corpus).resolve()
@@ -237,7 +240,8 @@ def main() -> int:
             if cfg == "dense":
                 got = search_dense(client, dense_model, query, 10)
             elif cfg == "hybrid_rrf":
-                got = search_hybrid_rrf(client, dense_model, sparse_model, query, 10)
+                got = search_hybrid_rrf(client, dense_model, sparse_model, query, 10,
+                                        prefetch_limit=args.prefetch_limit)
             else:
                 raise SystemExit(f"неизвестная конфигурация: {cfg}")
             lat.append((time.perf_counter() - t0) * 1000)
