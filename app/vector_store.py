@@ -60,7 +60,11 @@ def create_hybrid_collection(quantize: bool = False, collection_name: str = COLL
             distance=models.Distance.COSINE,
         )
         if quantize:
-            dense_params.quantization_config = models.BinaryQuantizationConfig(always_ram=True)
+            # VectorParams.quantization_config ожидает серверную модель
+            # BinaryQuantization(binary=BinaryQuantizationConfig(...)).
+            dense_params.quantization_config = models.BinaryQuantization(
+                binary=models.BinaryQuantizationConfig(always_ram=True)
+            )
 
         # Create collection with hybrid vectors
         qdrant_client.create_collection(
