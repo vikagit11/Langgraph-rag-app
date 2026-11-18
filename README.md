@@ -2,15 +2,16 @@
 
 A local, privacy-first Retrieval-Augmented Generation (RAG) system engineered with **LangGraph**, **FastAPI**, **Streamlit**, and **Qdrant**.
 
-The application runs entirely offline without third-party API dependencies, leveraging containerized Ollama models alongside high-efficiency binary-quantized vector indexing.
+The application runs entirely offline without third-party API dependencies, leveraging containerized Ollama models alongside hybrid dense + sparse retrieval in Qdrant.
 
 ---
 
 ## Key Highlights
 
 - **Graph-Driven Pipeline**: Dynamic routing, state management, and reasoning powered by LangGraph.
-- **High-Performance Vector Storage**: Qdrant integration featuring binary quantization and FastEmbed for memory-efficient dense retrieval.
-- **Hybrid Retrieval Strategy**: Semantic vector search combined with Maximal Marginal Relevance (MMR) for diverse, high-relevance context extraction.
+- **Hybrid Retrieval**: Dense embeddings (FastEmbed, `thenlper/gte-large`) combined with sparse `miniCOIL`, fused by Reciprocal Rank Fusion in Qdrant.
+- **Two-Stage Ranking**: Optional cross-encoder reranking on top of RRF candidates.
+- **Measured Quality**: A retrieval evaluation harness with recall@k, MRR@k and latency; see [Evaluation](#evaluation).
 - **Adaptive Prompt Engineering**: Context-aware prompts tailored dynamically based on document presence and query intent.
 - **Modern Full-Stack Architecture**: Asynchronous FastAPI service paired with an intuitive Streamlit workspace.
 - **Self-Contained Deployment**: Docker Compose environment with automated model loading and live system health diagnostics.
@@ -138,16 +139,43 @@ This will automatically:
 
 ### **LangGraph Pipeline**
 
-- **Search Node**: Hybrid search with MMR for diverse results
+- **Search Node**: Hybrid search (dense + sparse) fused with RRF, optionally reranked by a cross-encoder
 - **Generate Node**: Context-aware response generation
 - **Smart Routing**: Different prompts based on context availability
 
 ### **Components**
 
-- **FastEmbed**: Efficient 1024-dimensional embeddings
-- **Binary Quantization**: Optimized vector storage
-- **Hybrid Search**: Combines semantic and keyword search
+- **FastEmbed**: 1024-dimensional dense embeddings (`thenlper/gte-large`) plus sparse `Qdrant/minicoil-v1`
+- **Stable chunk ids**: payload carries `doc_id` (content hash), `source` and `chunk_index`, so evaluation labels survive re-indexing
+- **Quantization**: Binary Quantization is available as an opt-in (`create_hybrid_collection(quantize=True)`); measured impact is in [Evaluation](#evaluation)
 - **Dynamic Models**: Auto-discovery of available models
+
+## Evaluation
+
+Retrieval quality is measured rather than assumed. `eval/eval_retrieval.py` computes recall@5/10, MRR@10 and latency (p50/p95) against a labelled query set. Corpus: public Qdrant documentation pages, 38 chunks, 15 queries.
+
+| Configuration | recall@5 | recall@10 | MRR@10 |
+|---|---|---|---|
+| dense only | 0.733 | 1.000 | 0.527 |
+| hybrid + RRF | 0.800 | 0.867 | 0.474 |
+| hybrid + RRF + cross-encoder rerank | **0.867** | 0.867 | **0.722** |
+
+What the numbers say:
+
+- RRF helps on queries that reuse document wording (+10–12 pp MRR on two corpora) and loses on paraphrased queries, where the sparse channel adds noise without lexical overlap.
+- Reranking improves ordering, not recall@10: it can only reorder the candidates it is given.
+- Binary Quantization was measured on 37k × 384d points: container RSS growth drops from **192 MiB to 70 MiB (~2.7×)** when original vectors are kept on disk. Without `on_disk`, quantization *increases* memory, because 32× applies to vector bytes only — HNSW and payload do not shrink.
+
+Reproduce:
+
+```bash
+python eval/eval_retrieval.py --corpus eval/corpus \
+  --queries eval/eval_queries_docs_paraphrased.csv \
+  --out eval/results/check.csv --dense-model BAAI/bge-small-en-v1.5 \
+  --configs dense,hybrid_rrf,hybrid_rrf_rerank
+```
+
+Raw runs are stored in `eval/results/`; the quantization methodology is described in `eval/results/quantization-report.md`.
 
 ## API Endpoints
 
@@ -231,7 +259,7 @@ services:
 
 - **No Per-Token Charges**: Local inference is free
 - **Scalable**: Add more models without additional costs
-- **Efficient**: Optimized with binary quantization
+- **Efficient**: Quantization is available as an opt-in; its memory impact is measured in [Evaluation](#evaluation)
 
 ### **🛠️ Developer Friendly**
 
