@@ -1,0 +1,2 @@
+config,n_queries,recall@5,recall@10,mrr@10,p50_ms,p95_ms
+hybrid_rrf_rerank,15,0.8667,0.8667,0.7222,5948.07,7488.15
