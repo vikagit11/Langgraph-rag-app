@@ -140,6 +140,44 @@ def search_hybrid_rrf(client, dense_model, sparse_model, query: str, k: int,
     return [p.payload["doc_id"] for p in res.points]
 
 
+def retrieve_hybrid_pairs(client, dense_model, sparse_model, query: str, limit: int,
+                          prefetch_limit: int = 20) -> list[tuple[str, str]]:
+    """ Вернуть (doc_id, text) — тексты нужны реранкеру. """
+    dense_vec = next(dense_model.query_embed(query))
+    sparse_vec = next(sparse_model.query_embed(query))
+    res = client.query_points(
+        collection_name=COLLECTION,
+        prefetch=[
+            models.Prefetch(query=dense_vec, using=DENSE_VECTOR, limit=max(limit, prefetch_limit)),
+            models.Prefetch(query=models.SparseVector(**sparse_vec.as_object()),
+                            using=SPARSE_VECTOR, limit=max(limit, prefetch_limit)),
+        ],
+        query=models.FusionQuery(fusion=models.Fusion.RRF),
+        limit=limit,
+        with_payload=True,
+    )
+    return [(p.payload["doc_id"], p.payload["text"]) for p in res.points]
+
+
+def search_hybrid_rerank(client, dense_model, sparse_model, reranker, query: str, k: int,
+                         prefetch_limit: int = 20, rerank_top: int = 20) -> list[str]:
+    """Двухстадийный поиск: RRF набирает кандидатов, cross-encoder их переставляет.
+
+    Смысл: RRF хорошо находит, но плохо ранжирует. Реранкер читает пару
+    (запрос, документ) целиком и даёт точную оценку релевантности — но он
+    дорогой, поэтому его применяют только к верхушке кандидатов.
+    """
+    candidates = retrieve_hybrid_pairs(client, dense_model, sparse_model, query,
+                                       limit=max(rerank_top, k), prefetch_limit=prefetch_limit)
+    if not candidates:
+        return []
+
+    texts = [text for _, text in candidates]
+    scores = list(reranker.rerank(query, texts))
+    order = sorted(range(len(candidates)), key=lambda i: scores[i], reverse=True)
+    return [candidates[i][0] for i in order[:k]]
+
+
 # --------------------------------------------------------------------------- #
 # Метрики
 # --------------------------------------------------------------------------- #
@@ -217,6 +255,9 @@ def main() -> int:
     ap.add_argument("--sparse-model", default=SPARSE_MODEL)
     ap.add_argument("--prefetch-limit", type=int, default=20,
                     help="глубина prefetch для гибридной конфигурации")
+    ap.add_argument("--rerank-model", default="Xenova/ms-marco-MiniLM-L-6-v2")
+    ap.add_argument("--rerank-top", type=int, default=20,
+                    help="сколько кандидатов отдавать реранкеру")
     args = ap.parse_args()
 
     corpus_path = Path(args.corpus).resolve()
@@ -231,8 +272,14 @@ def main() -> int:
 
     client, dense_model, sparse_model = build_index(chunks, args.dense_model, args.sparse_model)
 
+    configs = [c.strip() for c in args.configs.split(",") if c.strip()]
+    reranker = None
+    if "hybrid_rrf_rerank" in configs:
+        from fastembed.rerank.cross_encoder import TextCrossEncoder
+        reranker = TextCrossEncoder(model_name=args.rerank_model)
+
     results = []
-    for cfg in [c.strip() for c in args.configs.split(",") if c.strip()]:
+    for cfg in configs:
         rec5 = rec10 = mrr = 0.0
         lat: list[float] = []
         for query, relevant in queries:
@@ -242,6 +289,10 @@ def main() -> int:
             elif cfg == "hybrid_rrf":
                 got = search_hybrid_rrf(client, dense_model, sparse_model, query, 10,
                                         prefetch_limit=args.prefetch_limit)
+            elif cfg == "hybrid_rrf_rerank":
+                got = search_hybrid_rerank(client, dense_model, sparse_model, reranker, query, 10,
+                                           prefetch_limit=args.prefetch_limit,
+                                           rerank_top=args.rerank_top)
             else:
                 raise SystemExit(f"неизвестная конфигурация: {cfg}")
             lat.append((time.perf_counter() - t0) * 1000)
