@@ -1,0 +1,16 @@
+query,relevant
+How can Qdrant combine dense and sparse results into one list?,Qdrant has a few ways of fusing the results from different queries
+What is the main building block of the Query API?,"Its main building block is the `prefetch` parameter"
+What is the default value of the k constant in RRF?,constant (set to 2 by default)
+How much compression does binary quantization give?,reducing the memory footprint by a factor of 32
+Which quantization method can compress vectors up to 64x?,up to 64x compression
+What is the typical accuracy error introduced by scalar quantization?,usually less than 1%
+Should rescoring be enabled together with binary quantization?,We recommend using binary quantization with rescoring enabled
+What kind of vector distribution does binary quantization require?,requires a centered distribution of vector components
+How much faster can binary quantization be compared to original vectors?,up to a 40x speedup
+How many quantization methods does Qdrant support?,Qdrant supports four quantization methods
+Can quantization be configured for a single named vector?,"can also be set on a per vector basis"
+What does the offset parameter affect in a query with prefetch?,"Using `offset` parameter only affects the main query"
+Which OpenAI model reached 0.98 recall@100 with 4x oversampling?,achieving 0.98 recall@100 with 4x oversampling
+What compression does 1.5-bit quantization provide?,about 21X compression
+Are rank positions in RRF zero-based?,zero-based rank positions
