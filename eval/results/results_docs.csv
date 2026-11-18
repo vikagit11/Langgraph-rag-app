@@ -1,0 +1,3 @@
+config,n_queries,recall@5,recall@10,mrr@10,p50_ms,p95_ms
+dense,15,1.0,1.0,0.6689,137.33,175.61
+hybrid_rrf,15,1.0,1.0,0.7722,528.47,562.28

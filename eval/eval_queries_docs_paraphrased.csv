@@ -1,0 +1,16 @@
+query,relevant
+What options exist for merging hits from several search methods?,Qdrant has a few ways of fusing the results from different queries
+Which request parameter allows running sub-queries inside one search call?,"Its main building block is the `prefetch` parameter"
+Which constant shifts rank weights in reciprocal rank fusion and what is its default?,constant (set to 2 by default)
+How many times smaller do vectors become when each component is stored as a single bit?,reducing the memory footprint by a factor of 32
+Which approach reaches the largest compression ratio when memory is the priority?,up to 64x compression
+How significant is the precision loss when vector components become 8-bit integers?,usually less than 1%
+Is it advisable to re-evaluate top candidates after one-bit compression?,We recommend using binary quantization with rescoring enabled
+What property must embedding coordinates have for one-bit storage to work well?,requires a centered distribution of vector components
+What speed gain is possible by comparing bits instead of floats?,up to a 40x speedup
+What is the full list of compression techniques available in Qdrant?,Qdrant supports four quantization methods
+Is it possible to apply compression settings to only one named field of a point?,"can also be set on a per vector basis"
+"If you paginate results, which part of a multi-stage query does skipping apply to?","Using `offset` parameter only affects the main query"
+Which OpenAI embedding was benchmarked at essentially perfect recall on dbpedia?,achieving 0.98 recall@100 with 4x oversampling
+What ratio does the intermediate bit depth between one and two bits achieve?,about 21X compression
+Does the highest-ranked document start counting from zero in fusion scoring?,zero-based rank positions

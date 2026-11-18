@@ -1,0 +1,2 @@
+config,n_queries,recall@5,recall@10,mrr@10,p50_ms,p95_ms
+hybrid_rrf,15,0.8,0.8667,0.4744,448.74,525.05
